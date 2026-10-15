@@ -1,16 +1,9 @@
-# Ignore a folder at the repository root (including its contents).
-# Replace folder-name with your folder name and remove the leading #.
-# /folder-name/
+# Examples: replace the names and uncomment the rules you need.
+# /folder-name/          Folder at the repository root
+# folder-name/           Folder with this name anywhere
+# /file-name.ext         One file at the repository root
+# /path/to/file.ext      One file inside a folder
 
-# Ignore folders with this name anywhere in the repository.
-# folder-name/
-
-# Ignore a single file at the repository root.
-# Replace file-name.ext with your file name and remove the leading #.
-# /file-name.ext
-
-# Ignore a single file inside a specific folder.
-# /path/to/file-name.ext
 boce_obradeno_staro/
 boce_obradeno_v2/
-pisanje/
+pisanje/text

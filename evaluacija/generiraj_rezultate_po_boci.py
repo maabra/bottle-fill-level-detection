@@ -12,7 +12,7 @@ from evaluacija import metrike
 from evaluacija.evaluacija_prozirnost import classify
 
 ROOT = Path(__file__).resolve().parent.parent
-# Ground truth defines the evaluated set: 36 images and 65 bottles.
+# Referentne oznake određuju skup: 36 slika i 65 boca.
 INPUT_DIR = ROOT / "boce"
 RESULTS_DIR = ROOT / "evaluacija" / "rezultati"
 IOU_MATCH = 0.4

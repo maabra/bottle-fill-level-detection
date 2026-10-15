@@ -2,9 +2,9 @@
 
 Python implementation accompanying Matej Abramović's master's thesis, **“Analiza algoritama detekcije rubova temeljenih na euklidskoj udaljenosti s primjenom u sustavima industrijske vizualne inspekcije”** (Juraj Dobrila University of Pula, 2026).
 
-The project detects bottles in photographs and estimates their liquid fill level using classical computer vision. It compares three approaches built around Euclidean distance, plus an RGB baseline, without training a neural network.
+This project finds bottles in photographs and estimates how full they are. It compares CIELAB gradients, K-means, and Chan–Vese, with an RGB gradient as a baseline. All four methods use Euclidean distance and run without model training.
 
-[Read the thesis (Croatian, PDF)](Diplomski_rad_Abramovic_finalno.pdf)
+The thesis is written in Croatian. Its original filename is `Diplomski_rad_Abramovic_finalno.pdf`.
 
 ## Algorithms
 
@@ -15,7 +15,7 @@ The project detects bottles in photographs and estimates their liquid fill level
 | K-means | Groups pixels by Euclidean distance to cluster centers, using CIELAB color, saturation, and spatial features for localization. | [kmeans_euklidska.py](algoritmi/kmeans_euklidska.py) |
 | Chan–Vese | Region-based contour evolution using squared Euclidean distances to mean region colors, with morphological smoothing. | [chanvese_euklidska.py](algoritmi/chanvese_euklidska.py) |
 
-Shared processing localizes bottle candidates, searches for the air–liquid boundary in vertical segments, and estimates fill percentage relative to the bottle's bounding-box height. Shared utilities are in [common.py](algoritmi/common.py).
+The methods share utilities for finding bottle candidates, searching for the liquid surface in vertical segments, and calculating the filled share of the bottle's bounding-box height. These utilities are in [common.py](algoritmi/common.py).
 
 Roberts, Sobel, Prewitt, Canny, and distance transforms are also discussed and illustrated in the thesis as background comparisons; the quantitative bottle evaluation below covers the four methods above.
 
@@ -42,11 +42,11 @@ Performance drops in cluttered scenes and on difficult transparent bottles. Ligh
 
 ## Visual examples
 
-Comparison on a simple scene:
+A simple scene with one bottle:
 
 ![Four algorithms on a single-bottle, brightly lit scene](pisanje/slike_rada/usporedba_jednostavna.png)
 
-Comparison on a complex scene:
+A cluttered scene with several bottles:
 
 ![Four algorithms on a cluttered scene with multiple bottles](pisanje/slike_rada/usporedba_kompleksna.png)
 
@@ -54,7 +54,7 @@ More figures are available in [pisanje/slike_rada](pisanje/slike_rada).
 
 ## Run
 
-Install Python and the required libraries, then run from the repository root:
+With Python installed, run these commands from the repository root:
 
 ```sh
 python -m pip install numpy opencv-python

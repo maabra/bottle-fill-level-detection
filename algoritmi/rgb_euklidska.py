@@ -1,20 +1,7 @@
-"""Algoritam 1: detekcija ruba boce i razine tekućine pomoću euklidske
-udaljenosti u RGB prostoru boja (+ zasićenje boje kao dodatna dimenzija).
+"""RGB inačica gradijentne metode za usporedbu s CIELAB-om.
 
-I lokalizacija boce i granica tekućine grade se na istoj podlozi -
-gradijentu dobivenom euklidskom udaljenošću susjednih piksela u RGB
-prostoru:
-- lokalizacija: magnituda gradijenta se Otsu pragom pretvara u binarnu
-  kartu rubova iz koje se izvlače konture oblika boce (vidi
-  `common.regions_from_binary_edges` za detalje o spajanju fragmentiranih
-  kontura prije filtriranja po obliku);
-- razina tekućine: širina okvira dijeli se na više stupaca (boca je 3D
-  objekt pa granica nije nužno ravna crta), a u svakom stupcu nezavisno
-  se traži redak koji najbolje dijeli [R, G, B, S] vektore na gornju i
-  donju skupinu s maksimalnom euklidskom udaljenošću (poopćeni Otsu
-  prag), potvrđen stvarnim vertikalnim gradijentom i s isključenim
-  recima etikete iz pretrage (vidi `common.boundary_curve`).
-"""
+Lokalizacija i procjena razine koriste isti postupak kao CIELAB inačica,
+ali se razlike boje računaju izravno u BGR kanalima OpenCV slike."""
 
 from pathlib import Path
 from typing import List, Tuple
@@ -26,18 +13,13 @@ from . import common
 
 ALGORITHM_NAME = "Euklidska udaljenost - gradijent boje (RGB, ablacija)"
 OUTPUT_DIRNAME = "rgb_euklidska"
-
-SEARCH_RANGE = (0.15, 0.90)  # testirano suzavanje do (0.30,0.75) - prosjek MAE izgleda bolje ali je varljivo:
-                             # umjetno povlaci NEODREDJENE (bez signala) procjene prema centru USKOG
-                             # raspona, sto slucajno pomogne najgorim slucajevima ali PSUJE vec dobre
-                             # (provjereno: 180813 isao s ~1pb greske na +27pb) - odbaceno, original je ispravniji
-MARGIN_RATIO = 0.18  # testirano 0.10-0.25, 0.18 ostaje najbolji
-N_SEGMENTS = 12  # kalibrirano grid-searchom (9-21); prosjek MAE sva 4 algoritma pao s 10.19% (9) na 9.77%
+SEARCH_RANGE = (0.15, 0.90)  # Širi raspon čuva visoke i niske razine; uži može pomaknuti slabe procjene prema sredini.
+MARGIN_RATIO = 0.18  # Bočna margina kao udio širine okvira.
+N_SEGMENTS = 12  # Broj segmenata odabran kalibracijom.
 
 
 def edge_map(image_bgr: np.ndarray) -> np.ndarray:
-    """Karta rubova: magnituda gradijenta dobivena euklidskom udaljenošću
-    boje susjednih piksela u RGB prostoru (svaka boja = jedna dimenzija)."""
+    """Vraća magnitudu gradijenta iz euklidskih razlika susjednih BGR piksela."""
     img = image_bgr.astype(np.float64)
 
     gx = np.zeros(img.shape[:2])
@@ -57,11 +39,7 @@ def edge_map(image_bgr: np.ndarray) -> np.ndarray:
 
 
 def _boxes_and_binary(image_bgr: np.ndarray):
-    """Vraća (okviri, binarna karta koja ih je dala) - ČISTO GRADIJENTNA
-    lokalizacija (`common.localize_gradient`), ovdje s RGB gradijentom
-    (`edge_map`). Isti pipeline kao `lab_euklidska` (ovo je ablacija u RGB
-    prostoru boje) - jedina razlika je prostor u kojem se računa gradijent.
-    Binarna karta se vraća za obris (`common.bottle_outline`)."""
+    """Vraća okvire i binarnu kartu dobivenu RGB gradijentom."""
     return common.localize_gradient(image_bgr, edge_map)
 
 
@@ -71,14 +49,10 @@ def detect_bottle_regions(image_bgr: np.ndarray) -> List[common.BBox]:
 
 
 def compute_outline_edges(image_bgr: np.ndarray, binary: np.ndarray = None) -> np.ndarray:
-    """Karta rubova za `common.bottle_outline` - dodatno fuzionira sirovi
-    (nezamućeni) signal zasićenja radi finijeg detalja preko `binary`
-    (koja već ima isključenu boju kože), pa se isključivanje kože ponovno
-    primjenjuje da se ruka ne vrati kroz ovaj dodatni izvor (vidi
-    common.saturation_edge_map/exclude_skin). Javna je (ne `_`-prefiks) da
-    je i evaluacijska skripta može pozvati bez ponovnog otkrivanja logike
-    iz `process_image` - `binary` je opcionalan jer ga `process_image` već
-    ima izračunatog (iz `_boxes_and_binary`), a evaluacija ne."""
+    """Dodaje nezamućene rubove zasićenja i ponovno uklanja regije kože.
+
+    binary se može ponovno upotrijebiti iz lokalizacije; ako nije
+    zadan, računa se ovdje."""
     if binary is None:
         _, binary = _boxes_and_binary(image_bgr)
     return common.exclude_skin(
@@ -87,10 +61,7 @@ def compute_outline_edges(image_bgr: np.ndarray, binary: np.ndarray = None) -> n
 
 
 def native_outline(image_bgr: np.ndarray, bbox: common.BBox, outline_edges) -> "np.ndarray | None":
-    """Paradigmatski-vlastit obris: gradijentno praćenje ruba
-    (`common.bottle_outline`), isto kao lab_euklidska (ovo je ablacija u
-    RGB prostoru boje). Bez Chan-Vese/klaster fallbacka - kad praćenje ne
-    uspije, pada na pravokutnik."""
+    """Prati obris na RGB karti rubova; bez pouzdanog obrisa vraća None."""
     return common.bottle_outline(bbox, outline_edges)
 
 

@@ -1,12 +1,8 @@
-"""Algoritam 2: detekcija ruba boce i razine tekućine pomoću euklidske
-udaljenosti u CIELAB prostoru boja (+ zasićenje boje kao dodatna
-dimenzija).
+"""Detekcija boca i razine tekućine pomoću gradijenta boje u CIELAB-u.
 
-Postupak je analogan RGB varijanti (rgb_euklidska.py) - i lokalizacija
-boce i granica tekućine grade se na istom principu (vidi
-`common.regions_from_binary_edges` i `common.boundary_curve`) - ali se
-udaljenost računa nad L*a*b* komponentama, čime je mjera bliža percepciji
-boje ljudskog oka i manje osjetljiva na promjene osvjetljenja nego RGB."""
+Rubovi se računaju iz euklidskih razlika susjednih piksela. Za procjenu
+razine koriste se CIELAB komponente i HSV zasićenje. RGB inačica
+primjenjuje isti postupak u drugom prostoru boja."""
 
 from pathlib import Path
 from typing import List, Tuple
@@ -18,13 +14,9 @@ from . import common
 
 ALGORITHM_NAME = "Euklidska udaljenost - gradijent boje (CIELAB)"
 OUTPUT_DIRNAME = "lab_euklidska"
-
-SEARCH_RANGE = (0.15, 0.90)  # testirano suzavanje do (0.30,0.75) - prosjek MAE izgleda bolje ali je varljivo:
-                             # umjetno povlaci NEODREDJENE (bez signala) procjene prema centru USKOG
-                             # raspona, sto slucajno pomogne najgorim slucajevima ali PSUJE vec dobre
-                             # (provjereno: 180813 isao s ~1pb greske na +27pb) - odbaceno, original je ispravniji
-MARGIN_RATIO = 0.18  # testirano 0.10-0.25, 0.18 ostaje najbolji
-N_SEGMENTS = 12  # kalibrirano grid-searchom (9-21); prosjek MAE sva 4 algoritma pao s 10.19% (9) na 9.77%
+SEARCH_RANGE = (0.15, 0.90)  # Širi raspon čuva visoke i niske razine; uži može pomaknuti slabe procjene prema sredini.
+MARGIN_RATIO = 0.18  # Bočna margina kao udio širine okvira.
+N_SEGMENTS = 12  # Broj segmenata odabran kalibracijom.
 
 
 def edge_map(image_bgr: np.ndarray) -> np.ndarray:
@@ -47,13 +39,7 @@ def edge_map(image_bgr: np.ndarray) -> np.ndarray:
 
 
 def _boxes_and_binary(image_bgr: np.ndarray):
-    """Vraća (okviri, binarna karta koja ih je dala) - ČISTO GRADIJENTNA
-    lokalizacija (`common.localize_gradient`), ovdje pokrenuta s CIELAB
-    gradijentom (`edge_map`) kao primarnim signalom. Dijeli je samo s
-    `rgb_euklidska` (ista lokalna paradigma, drugi prostor boje) - ne više
-    s `chanvese_euklidska`, koji sad lokalizira vlastitom varijacijskom
-    paradigmom. Binarna karta se vraća jer je process_image ponovno koristi
-    za obris (`common.bottle_outline`)."""
+    """Vraća okvire i binarnu kartu dobivenu CIELAB gradijentom."""
     return common.localize_gradient(image_bgr, edge_map)
 
 
@@ -63,9 +49,9 @@ def detect_bottle_regions(image_bgr: np.ndarray) -> List[common.BBox]:
 
 
 def compute_outline_edges(image_bgr: np.ndarray, binary: np.ndarray = None) -> np.ndarray:
-    """Karta rubova za `common.bottle_outline` - vidi identičnu napomenu u
-    rgb_euklidska.py. `binary` je opcionalan jer ga `process_image` već
-    ima izračunatog, a evaluacijska skripta nema."""
+    """Dopunjuje binarnu kartu rubovima zasićenja i uklanja regije kože.
+
+    Ako binary nije zadan, lokalizacija se izračunava ovdje."""
     if binary is None:
         _, binary = _boxes_and_binary(image_bgr)
     return common.exclude_skin(
@@ -74,11 +60,7 @@ def compute_outline_edges(image_bgr: np.ndarray, binary: np.ndarray = None) -> n
 
 
 def native_outline(image_bgr: np.ndarray, bbox: common.BBox, outline_edges) -> "np.ndarray | None":
-    """Paradigmatski-vlastit obris: gradijentno praćenje ruba
-    (`common.bottle_outline`) nad kartom rubova ovog algoritma. Bez posudbe
-    Chan-Vese siluete ili K-means klastera - kad praćenje ruba ne uspije
-    (npr. posve providna boca s isprekidanim rubom), pada na pravokutnik
-    (outline=None), ne na tuđu paradigmu."""
+    """Prati obris na karti rubova; vraća None ako nema dovoljno signala."""
     return common.bottle_outline(bbox, outline_edges)
 
 

@@ -1,22 +1,22 @@
-PARAMETRI I PRAGOVI ZA KATEGORIZACIJU NAZIVA SLIKA U boce/
+Pragovi za kategorije u nazivima slika iz mape boce/
 ====================================================================================================
 
 Format naziva: {izvorno_ime}_{kolicina}_{osvjetljenje}_{rezolucija}_{kompleksnost}.webp
 
-PRAGOVI (izracunati na skupu slika, ne procijenjeni okom):
-  Rezolucija (MP = sirina*visina/1e6):
+Pragovi su izračunati iz skupa slika:
+  Rezolucija (MP = širina*visina/1e6):
     niska   : MP < 1.00
     visoka  : MP >= 1.00
-  Osvjetljenje (prosjecna sivotonska svjetlina 0-255, tercili):
+  Osvjetljenje (prosječna sivotonska svjetlina 0-255, tercili):
     slabo    : svjetlina < 110.86
     umjereno : 110.86 <= svjetlina <= 131.80
     jako     : svjetlina > 131.80
-  Kompleksnost pozadine (Canny gustoca rubova IZVAN okvira boce, medijan):
-    jednostavna : gustoca < 1.167%
-    kompleksna  : gustoca >= 1.167%
-  Kolicina (broj boca):
+  Kompleksnost pozadine (Canny gustoća rubova izvan okvira boce, medijan):
+    jednostavna : gustoća < 1.167%
+    kompleksna  : gustoća >= 1.167%
+  Broj boca (broj boca):
     jedna : 1 boca
-    vise  : >= 2 boce (ground truth za oznacene slike, vizualna provjera za neoznacene)
+    vise  : >= 2 boce (ground truth za označene slike, vizualna provjera za neoznačene)
 
 ====================================================================================================
 

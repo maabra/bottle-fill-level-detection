@@ -1,23 +1,8 @@
-"""Glavna skripta: detekcija razine tekućine u bocama pomoću tri
-algoritma temeljena na euklidskoj udaljenosti, po jedan iz svake
-paradigme njenog korištenja:
+"""Pokreće detekciju boca i procjenu razine tekućine.
 
-1. LOKALNA (diferencijalna)  - gradijent boje u CIELAB prostoru:
-   euklidska udaljenost SUSJEDNIH piksela (rub = velika udaljenost);
-2. GLOBALNA (particijska)    - K-means segmentacija: euklidska
-   udaljenost piksela do K CENTROIDA (regija = bliski pikseli);
-3. VARIJACIJSKA (energetska) - Chan-Vese aktivna kontura: euklidska
-   udaljenost piksela do STATISTIKE REGIJE (kontura minimizira sumu
-   kvadratnih odstupanja od prosjeka svake regije).
-
-Uz to je dostupna ablacijska varijanta algoritma 1 u RGB prostoru -
-usporedba prostora boja unutar iste (gradijentne) metode.
-
-Ulazne slike (jpg, jpeg, png, bmp, webp, tif/tiff) čitaju se iz foldera
-'boce', a obrađene slike s označenom bocom i algoritamski određenom
-razinom tekućine spremaju se u zaseban podfolder unutar 'boce_obradeno'
-za svaki algoritam.
-"""
+Izbornik nudi CIELAB gradijent, K-means, Chan-Vese i RGB usporedbu.
+Slike se čitaju iz mape boce, a označeni rezultati spremaju u
+boce_obradeno, u zasebnu mapu za svaki algoritam."""
 
 import sys
 from pathlib import Path
@@ -31,7 +16,6 @@ from algoritmi import common, rgb_euklidska, lab_euklidska, kmeans_euklidska, ch
 BASE_DIR = Path(__file__).resolve().parent
 INPUT_DIR = BASE_DIR / "boce"
 OUTPUT_DIR = BASE_DIR / "boce_obradeno"
-
 ALGORITHMS = {
     "1": lab_euklidska,
     "2": kmeans_euklidska,

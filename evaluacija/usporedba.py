@@ -1,17 +1,12 @@
-"""Vizualna usporedba ALGORITMA s LJUDSKIM ground truthom.
+"""Prikazuje procijenjene razine uz ručno označenu referentnu razinu.
 
-Za svaku označenu sliku iscrtava na istom okviru (ground truth okvir):
-  - GT razinu (ljudska istina) kao debelu ZELENU vodoravnu crtu + "GT XX%",
-  - razinu svakog algoritma kao tanju obojenu vodoravnu crtu + "alg XX%",
-  sve na ISTOM (GT) okviru pa je odstupanje = okomiti razmak između crta.
-Time se na prvi pogled vidi tko je blizu čovjeku, a tko bježi - i je li
-sam GT ispravno postavljen (crta prati stvarnu površinu tekućine).
+Algoritmi samostalno detektiraju boce, a sparene procjene prikazuju se
+na referentnim okvirima. Zelena crta označava stvarnu razinu; ostale
+boje prikazuju procjene algoritama. Okomiti razmak pokazuje odstupanje.
 
-Sve slike se spremaju u `evaluacija/usporedba/`, a na ekran se ispiše
-tablica GT% vs svaki algoritam% po boci (s pogreškom u postotnim bodovima).
-
-Pokretanje:  python -m evaluacija.usporedba
-"""
+Slike se spremaju u evaluacija/usporedba, a tablica pogrešaka u postotnim
+bodovima ispisuje se u terminalu.
+Pokretanje: python -m evaluacija.usporedba"""
 
 from __future__ import annotations
 
@@ -50,7 +45,7 @@ GT_COLOR = (60, 220, 60)
 
 
 def _algo_levels(module, image) -> List[tuple]:
-    """Vrati listu (bbox, fill_percent) za sve detekcije jednog algoritma."""
+    """Vraća parove (bbox, fill_percent) za detekcije jednog algoritma."""
     if hasattr(module, "_boxes_and_binary"):
         boxes, binary = module._boxes_and_binary(image)
         edges = module.compute_outline_edges(image, binary)
@@ -66,8 +61,7 @@ def _algo_levels(module, image) -> List[tuple]:
 
 
 def _draw_hline_on_gt(img, gt_box, fill_percent, color, label, slot):
-    """Nacrtaj vodoravnu crtu na GT okviru na visini koja odgovara
-    `fill_percent` (kao da je boca puna toliko %), + oznaku."""
+    """Crta procijenjenu razinu na referentnom okviru i dodaje oznaku."""
     x, y, w, h = gt_box
     ly = int(y + h * (1.0 - fill_percent / 100.0))
     cv2.line(img, (x, ly), (x + w, ly), color, 2, cv2.LINE_AA)
@@ -133,12 +127,14 @@ def main() -> None:
     # Tablica na ekran.
     print(f"\nUsporedba GT vs algoritmi ({n} slika) - pogreška u p.b. iza svakog %:\n")
     hdr = f"{'slika':<26}{'#':>2} {'GT':>6} " + " ".join(f"{a[0]:>8}" for a in ALGOS)
-    print(hdr); print("-" * len(hdr))
+    print(hdr)
+    print("-" * len(hdr))
     for r in all_rows:
         line = f"{r['slika']:<26}{r['bottle']:>2} {r['GT']:>6} "
         for a in ALGOS:
             v = r[a[0]]
-            line += f"{(f'{v:.0f}({v-r[\"GT\"]:+.0f})' if v is not None else '-'):>8} "
+            value_label = f"{v:.0f}({v - r['GT']:+.0f})" if v is not None else "-"
+            line += f"{value_label:>8} "
         print(line)
     print(f"\nSlike spremljene u: {OUT_DIR}")
 

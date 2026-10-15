@@ -1,25 +1,12 @@
-"""Evaluacija PROZIRNE vs OBOJENE boce, ukršteno sa složenošću scene - za rad.
+"""Uspoređuje rezultate prema procijenjenoj prozirnosti i složenosti scene.
 
-Prozirnost NIJE u imenu datoteke pa se procjenjuje iz slike (proxy): boca je
-PROZIRNA ako je unutar okvira nisko zasićenje (S < S_THR) I boja unutrašnjosti
-je bliska boji neposredne pozadine (bgDist < DIST_THR u CIELAB-u) - tj. boca
-se "stapa" s pozadinom, nema vlastitog distinktnog bojnog signala. Inače
-OBOJENA (obojena tekućina, staklo, tamna/neprozirna).
+Boca se smatra prozirnom ako su zasićenje i CIELAB udaljenost od susjedne
+pozadine ispod zadanih pragova. To je automatska približna klasifikacija,
+a ne ručna oznaka. Rezultati se razdvajaju i po složenosti pozadine jer
+se njezin utjecaj preklapa s utjecajem prozirnosti.
 
-VAŽAN NALAZ (vidi projektne bilješke): prozirnost je konfaundirana s pozadinom
-- prozirna boca na BIJELOJ studijskoj pozadini ima nizak bgDist ali je LAKA;
-teška je tek prozirna boca na SLOŽENOJ (zakrčenoj) pozadini. Zato se izvještava
-UKRŠTENO: (prozirna/obojena) × (jednostavna/složena). Zaključak iz podataka:
-dominira SLOŽENOST, ne prozirnost.
-
-Sprema:
-  rezultati/prozirnost_po_boci.csv   - klasifikacija svake boce + je li ju
-                                        svaki algoritam pronašao (za provjeru/
-                                        ručnu doradu klasifikacije)
-  rezultati/prozirnost_krizno.csv    - 2×2 metrike (odziv/IoU/MAE) po algoritmu
-
-Pokretanje:  python -m evaluacija.evaluacija_prozirnost
-"""
+Sprema prozirnost_po_boci.csv i prozirnost_krizno.csv u evaluacija/rezultati.
+Pokretanje: python -m evaluacija.evaluacija_prozirnost"""
 from __future__ import annotations
 
 import csv

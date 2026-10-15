@@ -1,21 +1,11 @@
-"""Evaluacija PO KATEGORIJAMA boca/scena - za diplomski rad.
+"""Uspoređuje algoritme po kategorijama zapisanima u nazivima slika.
 
-Imena datoteka u `boce/` kodiraju četiri kategorije (izračunate, ne
-procijenjene okom - vidi projektne bilješke):
-    {izvorno_ime}_{jedna|vise}_{slabo|umjereno|jako}_{niska|visoka}_{jednostavna|kompleksna}.webp
-    (broj boca)   (svjetlina)                (punjenje)      (složenost pozadine)
+Za svaku skupinu računa odziv, preciznost, prosječni IoU i MAE razine
+na sparenim bocama. Tablice se ispisuju i spremaju u
+evaluacija/rezultati/po_kategorijama.csv. Značenje kategorija opisano je
+u kronoloski/parametri_kategorizacije_naziva.txt.
 
-Za svaki algoritam i svaku vrijednost svake kategorije računa:
-    n_boca (GT), odziv, preciznost, prosj. IoU (lokalizacija) i MAE razine
-    (postotni bodovi, samo na uspješno sparenim bocama).
-
-Time se vidi GDJE svaka od tri paradigme radi, a gdje pada - npr. prozirne
-boce na složenoj (kompleksnoj) pozadini su granica svih metoda, dok su
-jednostavne studijske scene ~riješene. Rezultat: `evaluacija/rezultati/
-po_kategorijama.csv` + čitljive tablice na ekranu.
-
-Pokretanje:  python -m evaluacija.evaluacija_po_kategorijama
-"""
+Pokretanje: python -m evaluacija.evaluacija_po_kategorijama"""
 from __future__ import annotations
 
 import csv
@@ -36,7 +26,6 @@ ROOT = Path(__file__).resolve().parent.parent
 INPUT_DIR = ROOT / "boce"
 RESULTS_DIR = ROOT / "evaluacija" / "rezultati"
 IOU_MATCH = 0.4
-
 ALGORITHMS = {
     "lab": lab_euklidska,
     "rgb": rgb_euklidska,

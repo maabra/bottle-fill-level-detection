@@ -1,20 +1,10 @@
-"""Grid-search kalibracija parametara nad ground truth podacima - pomoć
-pri odabiru vrijednosti umjesto "na oko" podešavanja. Dva neovisna cilja:
+"""Pretražuje kombinacije parametara lokalizacije i granice tekućine.
 
-- `localization`: parametri lokalizacije boce u `common.py`
-  (MIN_ASPECT_RATIO, MIN_COVERAGE_RATIO, MIN_EDGE_DENSITY) - optimizira se
-  F1 (preciznost+odziv), jer je stvarna evaluacija (34 slike/61 boca)
-  pokazala da je odziv (>50% promašenih boca) glavni problem, ne točnost
-  razine tekućine.
-- `boundary`: parametri granice tekućine (EDGE_BOOST_ALPHA,
-  CURVE_FIT_MAD_K) - optimizira se MAE postotka punjenja.
+Cilj localization optimizira prosječni F1, a boundary prosječni MAE
+za algoritme uključene u kalibraciju. Dobivene parametre treba provjeriti
+na odvojenom skupu slika prije promjene zadanih vrijednosti.
 
-UPOZORENJE: grid search lako prenauči parametre baš na testni skup slika.
-Prije prenošenja rezultata u `common.py` kao novi default, provjeri
-rezultat na *odvojenom* skupu slika koje kalibracija nije vidjela.
-
-Pokretanje: python -m evaluacija.kalibracija [--target localization|boundary|both]
-"""
+Pokretanje: python -m evaluacija.kalibracija [--target localization|boundary|both]"""
 
 from __future__ import annotations
 
@@ -32,8 +22,7 @@ import numpy as np
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
-    # Vidi identičnu napomenu u oznacavanje.py - omogućuje izravno
-    # pokretanje (IDE "Run" gumb), ne samo `python -m evaluacija....`.
+    # Dodaj korijen projekta za izravno pokretanje skripte iz IDE-a.
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from algoritmi import common, rgb_euklidska, lab_euklidska, kmeans_euklidska
@@ -41,20 +30,17 @@ from evaluacija.oznacavanje import load_ground_truth
 from evaluacija.pokreni_evaluaciju import INPUT_DIR, RESULTS_DIR, evaluate_algorithm, write_csv, _fmt
 
 ALGORITHMS = [rgb_euklidska, lab_euklidska, kmeans_euklidska]
-
 EDGE_BOOST_ALPHA_GRID = [0.0, 0.2, 0.4, 0.6, 0.8]
 CURVE_FIT_MAD_K_GRID = [2.0, 2.5, 3.0, 4.0]
-
 MIN_ASPECT_RATIO_GRID = [1.0, 1.15, 1.3]
 MIN_COVERAGE_RATIO_GRID = [0.12, 0.18, 0.22, 0.28]
 MIN_EDGE_DENSITY_GRID = [0.01, 0.02, 0.03]
 
 
 def combined_mae(ground_truth, input_dir) -> float:
-    """Prosječni MAE (%) preko sva tri algoritma, uz trenutne vrijednosti
-    common.EDGE_BOOST_ALPHA / common.CURVE_FIT_MAD_K (algoritmi ih čitaju
-    kao module-level globale u trenutku poziva, pa je privremeno
-    postavljanje dovoljno - ne treba dirati svaki algoritamski modul)."""
+    """Vraća prosječni MAE triju algoritama u postotnim bodovima.
+
+    Koristi trenutačne parametre granice iz modula common."""
     errors = []
     for module in ALGORITHMS:
         summary, *_rest = evaluate_algorithm(module, ground_truth, input_dir)
@@ -64,11 +50,10 @@ def combined_mae(ground_truth, input_dir) -> float:
 
 
 def combined_f1(ground_truth, input_dir) -> float:
-    """Prosječni F1 (preciznost+odziv lokalizacije) preko sva tri
-    algoritma, uz trenutne vrijednosti common.MIN_ASPECT_RATIO /
-    MIN_COVERAGE_RATIO / MIN_EDGE_DENSITY. F1 (ne sam odziv) da se
-    izbjegne trivijalno "labavljenje" pragova do točke gdje se sve
-    proglašava bocom (odziv 100%, preciznost blizu nule)."""
+    """Vraća prosječni F1 triju algoritama uz trenutačne filtre lokalizacije.
+
+    F1 uzima u obzir i preciznost i odziv, pa samo popuštanje pragova
+    ne mora poboljšati rezultat."""
     scores = []
     for module in ALGORITHMS:
         summary, *_rest = evaluate_algorithm(module, ground_truth, input_dir)

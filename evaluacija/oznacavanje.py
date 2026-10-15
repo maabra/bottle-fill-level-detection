@@ -1,28 +1,12 @@
-"""Interaktivni alat za ručno označavanje stvarne (ground truth) razine
-tekućine u bocama - bez ovoga nema objektivne osnove za usporedbu tri
-algoritma (vidi `pokreni_evaluaciju.py`).
+"""Interaktivno označavanje okvira boca i stvarne razine tekućine.
 
-Tijek rada za svaku sliku iz ulaznog foldera:
-1. Prozor za odabir okvira (`cv2.selectROIs`): povlačenjem miša označi
-   okvir oko svake boce na slici, ENTER/SPACE potvrđuje okvir i nastavlja
-   sljedeći, ESC završava odabir za tu sliku (ili je preskače ako nijedan
-   okvir nije povučen).
-2. Za svaki povučeni okvir otvara se uvećani isječak te boce: pomicanjem
-   miša crta se crvena vodoravna crta uz uživo prikazan postotak, lijevi
-   klik je postavlja, ENTER potvrđuje i sprema oznaku, ESC preskače tu
-   bocu (bez spremanja).
+Najprije povuci okvire u prozoru cv2.selectROIs: Enter ili razmak
+potvrđuje okvir, a Esc završava odabir. Zatim u isječku svake boce
+lijevim klikom postavi granicu tekućine. Enter sprema oznaku, a Esc
+preskače bocu.
 
-Rezultat se nakon svake slike odmah upisuje u `evaluacija/ground_truth.json`
-(da prekid alata ne izgubi već označene slike):
-
-    {
-      "IMG_6205.webp": [
-        {"bbox": [x, y, w, h], "level_y": 812}
-      ]
-    }
-
-`bbox` i `level_y` su u koordinatama originalne (neskalirane) slike.
-"""
+Oznake se spremaju nakon svake slike u evaluacija/ground_truth.json.
+Polja bbox = [x, y, w, h] i level_y koriste koordinate izvorne slike."""
 
 from __future__ import annotations
 
@@ -41,10 +25,7 @@ import numpy as np
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
-    # Omogućuje pokretanje i izravno (npr. IDE "Run" gumb), ne samo kao
-    # `python -m evaluacija.oznacavanje` iz korijena projekta - bez ovoga
-    # `algoritmi` paket (susjed ovog foldera) nije vidljiv jer Python u tom
-    # slučaju na sys.path stavi samo folder same skripte (`evaluacija/`).
+    # Dodaj korijen projekta za izravno pokretanje skripte iz IDE-a.
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from algoritmi import common
@@ -52,10 +33,8 @@ from algoritmi import common
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_INPUT_DIR = BASE_DIR / "boce"
 GROUND_TRUTH_PATH = Path(__file__).resolve().parent / "ground_truth.json"
-
-MAX_DISPLAY_DIM = 1000       # najveća dimenzija prozora za odabir okvira
-LEVEL_DISPLAY_HEIGHT = 750   # ciljna visina prozora za odabir granice
-
+MAX_DISPLAY_DIM = 1000  # najveća dimenzija prozora za odabir okvira
+LEVEL_DISPLAY_HEIGHT = 750  # ciljna visina prozora za odabir granice
 ROI_WINDOW = "1) Oznaci okvir(e) oko boce - ENTER/SPACE po okviru, ESC kad gotovo"
 LEVEL_WINDOW = "2) Klikni na granicu tekucine - ENTER potvrdi, ESC preskoci bocu"
 

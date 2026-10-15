@@ -1,28 +1,13 @@
-"""Kvantitativna evaluacija sva tri algoritma nad ručno označenim ground
-truth podacima (`evaluacija/oznacavanje.py` mora biti pokrenut barem
-jednom prije ovoga).
+"""Vrednuje četiri algoritma prema ručno označenim bocama.
 
-Za svaku označenu sliku svaki algoritam samostalno detektira boce
-(`detect_bottle_regions`) i procjenjuje razinu tekućine
-(`estimate_liquid_level`), bez pisanja u `boce_obradeno` (evaluacija se
-može ponavljati proizvoljno često bez nuspojava na diskove s "finalnim"
-obrađenim slikama). Detektirani okviri sparuju se sa stvarnima po IoU-u
-(`evaluacija/metrike.py`), što istovremeno mjeri:
+Svaki algoritam lokalizira boce i procjenjuje razinu, a okviri se
+sparuju po IoU-u. Lokalizacija se mjeri preciznošću, odzivom i IoU-om;
+pogreška razine računa se samo za sparene boce, u postotnim bodovima.
+Mjeri se i vrijeme obrade. Označene izlazne slike ovdje se ne spremaju.
 
-- točnost lokalizacije boce (preciznost/odziv/prosječni IoU) - koliko je
-  pouzdana geometrijska detekcija (relevantno za "robusnost" analizu),
-- točnost razine tekućine (MAE/RMSE/najveća pogreška u postotnim
-  bodovima) samo za uspješno sparene boce,
-- prosječno vrijeme obrade po slici.
-
-Rezultati se ispisuju na ekran i spremaju u `evaluacija/rezultati/`:
-`sazetak.csv` (jedan red po algoritmu) i `detaljno.csv` (jedan red po
-boci, uključujući promašaje i lažne pozitive) - oba se PREPISUJU svakim
-pokretanjem (prikazuju samo zadnji rezultat). `povijest.csv` umjesto toga
-RASTE iz pokretanja u pokretanje (vremenska oznaka + isti stupci kao
-sazetak.csv) - za kronološku usporedbu iteracija (npr. prije/poslije
-promjene parametra), vidi `append_history`.
-"""
+CSV izvještaji u evaluacija/rezultati prikazuju zadnje pokretanje.
+Datoteka povijest.csv čuva prethodne rezultate i dodaje vremensku oznaku.
+Pokretanje: python -m evaluacija.pokreni_evaluaciju"""
 
 from __future__ import annotations
 
@@ -41,8 +26,7 @@ import numpy as np
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(_PROJECT_ROOT) not in sys.path:
-    # Vidi identičnu napomenu u oznacavanje.py - omogućuje izravno
-    # pokretanje (IDE "Run" gumb), ne samo `python -m evaluacija....`.
+    # Dodaj korijen projekta za izravno pokretanje skripte iz IDE-a.
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from algoritmi import common, rgb_euklidska, lab_euklidska, kmeans_euklidska, chanvese_euklidska
@@ -76,10 +60,7 @@ def evaluate_algorithm(module, ground_truth: Dict[str, List[dict]], input_dir: P
     fn_s_djelomicnom = 0
     total_time = 0.0
     n_images = 0
-    # (image_name, gt_index) -> (izmjereni_%, pouzdanost) za sparene boce -
-    # koristi ga P5 (ansambl) da spoji procjene više algoritama za ISTU
-    # stvarnu bocu, neovisno o tome je li svaki algoritam za nju imao
-    # vlastiti (možda malo drugačiji) okvir.
+    # (slika, gt_indeks) povezuje procjene iste boce za ansambl.
     gt_estimates: Dict[tuple, tuple] = {}
 
     for image_name, annotations in ground_truth.items():
@@ -94,30 +75,15 @@ def evaluate_algorithm(module, ground_truth: Dict[str, List[dict]], input_dir: P
         n_images += 1
 
         t0 = time.perf_counter()
-        # rgb/lab_euklidska dijele isti lokalizacijski lanac za okvire I
-        # binarnu kartu ruba koju `compute_outline_edges` treba - kad je
-        # dostupna (module._boxes_and_binary), poziva se JEDNOM i binarna
-        # karta se ponovno iskoristi, umjesto da compute_outline_edges bez
-        # nje sam iznova pokrene cijeli (skup) lokalizacijski lanac. kmeans/
-        # chanvese nemaju taj privatni helper - njihov compute_outline_edges
-        # je neovisna (jeftina ili nepostojeća) computacija, pa se ondje
-        # poziva odvojeno kao i dosad.
-        # Obris je sad PARADIGMATSKI-VLASTIT po modulu (`native_outline`):
-        # lab/rgb gradijentno praćenje ruba (treba kartu rubova
-        # `outline_edges`), kmeans klaster-silueta, chanvese Chan-Vese
-        # silueta (potonja dva sama segmentiraju isječak, ne trebaju
-        # `outline_edges`). Računa se i ovdje (ne samo u process_image) jer
-        # `estimate_liquid_level` obrisom prilagođava raspon pretrage
-        # (rame/grlo, vidi common.body_search_range) - bez ovoga bi
-        # evaluacija mjerila drugačije ponašanje od obrađenih slika.
+        # Ponovno upotrijebi binarnu kartu RGB/CIELAB lokalizacije za obris.
+        # Svaki algoritam računa svoj obris kako bi evaluacija koristila
+        # isti raspon pretrage kao process_image.
         if hasattr(module, "_boxes_and_binary"):
             detected_boxes, binary = module._boxes_and_binary(image)
             outline_edges = module.compute_outline_edges(image, binary)
         else:
             detected_boxes = module.detect_bottle_regions(image)
-            # kmeans ima vlastitu kartu (klaster-granice) za praćenje obrisa;
-            # chanvese je nema (segmentira siluetu izravno), pa outline_edges
-            # ostaje None i njegov native_outline ga ignorira.
+            # K-means koristi granice klastera; Chan-Vese izravno segmentira siluetu.
             outline_edges = (
                 module.compute_outline_edges(image)
                 if hasattr(module, "compute_outline_edges") else None
@@ -134,11 +100,7 @@ def evaluate_algorithm(module, ground_truth: Dict[str, List[dict]], input_dir: P
         matches, unmatched_gt, unmatched_det = metrike.match_boxes(
             gt_boxes, det_boxes, IOU_MATCH_THRESHOLD
         )
-        # P6: razvrstaj lažne pozitive na fragmentaciju (suvišan komad VEĆ
-        # pronađene boce), djelomičnu detekciju (blizu neke PROMAŠENE boce)
-        # i prave lažne pozitive (vidi metrike.classify_false_positives) -
-        # da se fragmentacija vidi zasebno umjesto da se stopi u opći FP
-        # broj.
+        # Odvoji fragmente već pronađenih boca, djelomične detekcije i ostale FP.
         fp_classification = metrike.classify_false_positives(
             gt_boxes, det_boxes, unmatched_det, [gi for gi, _di in matches]
         )
@@ -210,11 +172,7 @@ def evaluate_algorithm(module, ground_truth: Dict[str, List[dict]], input_dir: P
         "max_pogreska_%": float(np.max(np.abs(errors))) if len(errors) else float("nan"),
         "prosj_vrijeme_s": total_time / n_images if n_images else float("nan"),
     }
-    # Zaseban rezultat (P4) - MAE odvojeno za pouzdane i nepouzdane
-    # procjene (vidi common.CONFIDENCE_THRESHOLD/best_split_index). Ne
-    # miješa se u `summary` iznad jer taj isti rječnik hrani i
-    # `povijest.csv` (append, ne prepisuje) - dodavanje novih ključeva
-    # ondje bi pomiješalo stupce starih i novih redaka.
+    # Pouzdanost se izvještava zasebno kako stupci povijesnog CSV-a ostaju isti.
     confidence_summary = {
         "algoritam": module.OUTPUT_DIRNAME,
         "n_pouzdano": len(confident_errors),
@@ -224,14 +182,8 @@ def evaluate_algorithm(module, ground_truth: Dict[str, List[dict]], input_dir: P
         "MAE_nepouzdano_%": float(np.mean(np.abs(unconf_errors))) if len(unconf_errors) else float("nan"),
         "RMSE_nepouzdano_%": float(np.sqrt(np.mean(unconf_errors ** 2))) if len(unconf_errors) else float("nan"),
     }
-    # P6: razlaganje lažnih pozitiva (vidi metrike.classify_false_positives)
-    # - koliko FP-ova je zapravo fragmentacija VEĆ pronađene boce (isti uzrok
-    # kao u P5 ansamblu: dedup/spajanje okvira, ne stvarna pogrešna
-    # detekcija), koliko je "blizu" neke PROMAŠENE boce (djelomično -
-    # ukazuje na to da lokalizacija zahvaća pravi objekt ali okvir nije
-    # dovoljno dobar/velik za IoU prag) i koliko je stvarno pogrešnih.
-    # Odvojeno od `summary` iz istog razloga kao P4 (povijest.csv raste
-    # appendom, ne prepisuje se).
+    # Razloži FP na fragmente, djelomične detekcije i ostale pogrešne okvire.
+    # Zaseban izvještaj čuva postojeći format povijesti.
     fragment_summary = {
         "algoritam": module.OUTPUT_DIRNAME,
         "FP_fragmentacija": fp_fragmentacija,
@@ -246,23 +198,12 @@ def evaluate_algorithm(module, ground_truth: Dict[str, List[dict]], input_dir: P
 def compute_ensemble(
     ground_truth: Dict[str, List[dict]], all_gt_estimates: Dict[str, Dict[tuple, tuple]]
 ):
-    """P5: ansambl (medijan) preko svih algoritama koji su za ISTU
-    stvarnu bocu (isti (slika, gt_indeks) ključ - vidi `gt_estimates` u
-    `evaluate_algorithm`) dali procjenu, neovisno o tome je li svaki
-    algoritam za nju imao vlastiti, možda malo drugačiji okvir. Prednost
-    ansambla dolazi do izražaja SAMO kad se algoritmi ne slažu -
-    pojedinačna katastrofalna pogreška jednog algoritma tada nestane u
-    medijanu. Kad svi dijele isti uzrok pogreške (npr. ista lokalizacija
-    izgubi vrh boce, ili isti label_band_mask promaši grafiku etikete -
-    vidi dijagnozu u common.extend_boxes_top/label_band_mask), medijan ne
-    pomaže, ali ni ne šteti - zato je ovo DODATNA usporedba, ne zamjena
-    za popravak dijeljenih uzroka.
+    """Spaja procjene medijanom za svaku istu referentnu bocu.
 
-    Prednost se daje procjenama označenima kao pouzdane
-    (common.CONFIDENCE_THRESHOLD); ako NIJEDAN algoritam nije bio
-    pouzdan za neku bocu, koristi se medijan svih dostupnih (bolje
-    grubo nagađanje iz više izvora nego nijedno), a ta boca se dodatno
-    broji u `n_bez_pouzdane_procjene`."""
+    Prednost imaju procjene iznad praga pouzdanosti. Ako takvih nema,
+    koriste se sve dostupne procjene, a boca se broji i u
+    n_bez_pouzdane_procjene. Zajedničke pogreške svih metoda medijan
+    ne može ukloniti."""
     gt_fill_lookup: Dict[tuple, float] = {}
     for image_name, annotations in ground_truth.items():
         for gi, a in enumerate(annotations):
@@ -334,12 +275,7 @@ def write_csv(path: Path, rows: List[dict]) -> None:
 
 
 def append_history(path: Path, rows: List[dict]) -> None:
-    """Dodaje redove na KRAJ `path` (ne prepisuje), s vremenskom oznakom
-    kao prvim stupcem - za razliku od `sazetak.csv`/`detaljno.csv` (koji
-    uvijek prikazuju samo zadnje pokretanje), ova datoteka raste iz
-    pokretanja u pokretanje pa se iteracije (npr. prije/poslije promjene
-    parametra) mogu kronološki uspoređivati u istoj tablici (Excel/pandas:
-    grupiraj po 'algoritam', sortiraj po 'vrijeme')."""
+    """Dodaje rezultate s vremenskom oznakom na kraj povijesnog CSV-a."""
     common.ensure_dir(path.parent)
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     rows_with_ts = [{"vrijeme": timestamp, **row} for row in rows]
