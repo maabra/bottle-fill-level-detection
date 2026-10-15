@@ -1,0 +1,63 @@
+PARAMETRI I PRAGOVI ZA KATEGORIZACIJU NAZIVA SLIKA U boce/
+====================================================================================================
+
+Format naziva: {izvorno_ime}_{kolicina}_{osvjetljenje}_{rezolucija}_{kompleksnost}.webp
+
+PRAGOVI (izracunati na skupu slika, ne procijenjeni okom):
+  Rezolucija (MP = sirina*visina/1e6):
+    niska   : MP < 1.00
+    visoka  : MP >= 1.00
+  Osvjetljenje (prosjecna sivotonska svjetlina 0-255, tercili):
+    slabo    : svjetlina < 110.86
+    umjereno : 110.86 <= svjetlina <= 131.80
+    jako     : svjetlina > 131.80
+  Kompleksnost pozadine (Canny gustoca rubova IZVAN okvira boce, medijan):
+    jednostavna : gustoca < 1.167%
+    kompleksna  : gustoca >= 1.167%
+  Kolicina (broj boca):
+    jedna : 1 boca
+    vise  : >= 2 boce (ground truth za oznacene slike, vizualna provjera za neoznacene)
+
+====================================================================================================
+
+naziv datoteke                                                     dim (SxV)      MP  svjetlina  osvjetljenje    edge%  kompleksnost  n_boca  kolicina      izvor n_boca
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+20260722_222545_vise_slabo_niska_kompleksna.webp                     958x539    0.52      109.5         slabo    4.41%    kompleksna       5      vise      ground truth
+20260722_222548_vise_slabo_niska_kompleksna.webp                     958x539    0.52       95.7         slabo    4.44%    kompleksna       5      vise      ground truth
+20260723_133307_jedna_slabo_visoka_kompleksna.webp                  958x1702    1.63       68.7         slabo    1.38%    kompleksna       1     jedna      ground truth
+20260723_133342_jedna_umjereno_visoka_jednostavna.webp              958x1702    1.63      123.8      umjereno    0.15%   jednostavna       1     jedna      ground truth
+20260723_133438_vise_umjereno_niska_kompleksna.webp                  958x540    0.52      121.0      umjereno    3.85%    kompleksna       6      vise      ground truth
+20260723_133441_vise_slabo_niska_kompleksna.webp                     958x540    0.52       89.6         slabo    3.60%    kompleksna       6      vise      ground truth
+20260723_133523_jedna_slabo_visoka_jednostavna.webp                 958x1702    1.63       97.1         slabo    0.56%   jednostavna       1     jedna      ground truth
+20260723_133601_jedna_umjereno_visoka_kompleksna.webp               958x1702    1.63      115.4      umjereno    2.07%    kompleksna       1     jedna      ground truth
+20260723_133629_vise_umjereno_niska_kompleksna.webp                  958x540    0.52      130.1      umjereno    2.87%    kompleksna       4      vise      ground truth
+20260723_133644_jedna_umjereno_visoka_jednostavna.webp              958x1702    1.63      120.5      umjereno    0.43%   jednostavna       1     jedna      ground truth
+20260723_133748_jedna_jako_visoka_jednostavna.webp                  958x1702    1.63      140.3          jako    0.97%   jednostavna       1     jedna      ground truth
+20260723_133817_jedna_slabo_niska_kompleksna.webp                    958x540    0.52       98.3         slabo    4.25%    kompleksna       1     jedna      ground truth
+20260723_170620_jedna_umjereno_visoka_kompleksna.webp               958x1278    1.22      111.5      umjereno    2.08%    kompleksna       1     jedna  vizualna provjera
+20260723_170705_jedna_umjereno_visoka_kompleksna.webp               958x1278    1.22      114.3      umjereno    1.96%    kompleksna       1     jedna  vizualna provjera
+20260723_175641_jedna_umjereno_visoka_jednostavna.webp              958x1278    1.22      115.2      umjereno    0.01%   jednostavna       1     jedna      ground truth
+20260723_175708_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      153.9          jako    0.00%   jednostavna       1     jedna      ground truth
+20260723_175738_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      135.2          jako    0.01%   jednostavna       1     jedna      ground truth
+20260723_180652_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      181.0          jako    0.01%   jednostavna       1     jedna      ground truth
+20260723_180733_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      186.2          jako    0.01%   jednostavna       1     jedna      ground truth
+20260723_180752_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      178.7          jako    0.00%   jednostavna       1     jedna      ground truth
+20260723_180813_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      176.3          jako    0.00%   jednostavna       1     jedna      ground truth
+20260723_181009_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      186.5          jako    0.00%   jednostavna       1     jedna      ground truth
+20260723_181023_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      185.5          jako    0.02%   jednostavna       1     jedna      ground truth
+20260723_181038_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      177.2          jako    0.00%   jednostavna       1     jedna      ground truth
+20260723_181058_jedna_jako_visoka_jednostavna.webp                  958x1278    1.22      183.2          jako    0.00%   jednostavna       1     jedna      ground truth
+20260723_181157_vise_jako_niska_jednostavna.webp                     958x719    0.69      175.4          jako    0.03%   jednostavna       3      vise      ground truth
+20260723_181228_vise_slabo_niska_jednostavna.webp                    958x719    0.69       53.0         slabo    0.00%   jednostavna       3      vise      ground truth
+20260723_184149_jedna_slabo_visoka_jednostavna.webp                 974x1730    1.69       87.9         slabo    0.66%   jednostavna       1     jedna      ground truth
+20260724_110607_jedna_umjereno_visoka_kompleksna.webp               958x1278    1.22      114.0      umjereno    1.17%    kompleksna       1     jedna  vizualna provjera
+20260724_110619_jedna_umjereno_visoka_kompleksna.webp               958x1278    1.22      119.8      umjereno    2.84%    kompleksna       1     jedna  vizualna provjera
+IMG_20260723_082440361_HDR_jedna_umjereno_visoka_kompleksna.webp    958x1704    1.63      113.8      umjereno    4.56%    kompleksna       1     jedna  vizualna provjera
+IMG_20260723_130924148_HDR_vise_umjereno_visoka_kompleksna.webp     958x1704    1.63      114.3      umjereno    4.06%    kompleksna       2      vise  vizualna provjera
+IMG_20260723_131055849_HDR_vise_umjereno_niska_kompleksna.webp       958x539    0.52      128.5      umjereno   16.45%    kompleksna       2      vise  vizualna provjera
+IMG_20260723_131154644_HDR_vise_slabo_visoka_kompleksna.webp        958x1704    1.63      106.5         slabo    3.44%    kompleksna       2      vise  vizualna provjera
+IMG_20260723_131310919_HDR_vise_slabo_visoka_kompleksna.webp        958x1704    1.63      105.5         slabo    4.63%    kompleksna       2      vise  vizualna provjera
+IMG_6205_jedna_slabo_visoka_kompleksna.webp                         958x1278    1.22       39.5         slabo    1.45%    kompleksna       1     jedna      ground truth
+IMG_6206_jedna_slabo_visoka_kompleksna.webp                         958x1278    1.22       75.0         slabo    2.24%    kompleksna       1     jedna      ground truth
+
+Ukupno slika: 37

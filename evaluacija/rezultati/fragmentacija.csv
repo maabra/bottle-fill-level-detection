@@ -1,0 +1,5 @@
+algoritam,FP_fragmentacija,FP_djelomicno,FP_pravi,FN_s_djelomicnom_det,FN_potpuno_promaseno
+lab_euklidska,0,1,13,1,32
+rgb_euklidska,0,4,14,4,32
+kmeans_euklidska,0,0,18,0,26
+chanvese_euklidska,0,0,12,0,39

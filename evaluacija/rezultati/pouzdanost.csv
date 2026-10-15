@@ -1,0 +1,5 @@
+algoritam,n_pouzdano,n_nepouzdano,MAE_pouzdano_%,RMSE_pouzdano_%,MAE_nepouzdano_%,RMSE_nepouzdano_%
+lab_euklidska,32,0,16.68514902781719,22.718997738740942,nan,nan
+rgb_euklidska,29,0,17.0224666568674,23.712233245897636,nan,nan
+kmeans_euklidska,39,0,15.772180843332208,21.318701028424087,nan,nan
+chanvese_euklidska,26,0,14.526904099655109,19.28944382701979,nan,nan

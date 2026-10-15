@@ -1,0 +1,17 @@
+algoritam,klasa,slozenost,n_boca,TP,odziv,prosj_IoU,MAE_%
+lab,prozirna,jednostavna,11,8,0.727,0.913,12.41
+lab,prozirna,slozena,7,2,0.286,0.569,23.7
+lab,obojena,jednostavna,11,9,0.818,0.82,12.79
+lab,obojena,slozena,36,13,0.361,0.635,20.93
+rgb,prozirna,jednostavna,11,9,0.818,0.863,10.93
+rgb,prozirna,slozena,7,2,0.286,0.559,24.27
+rgb,obojena,jednostavna,11,8,0.727,0.891,11.18
+rgb,obojena,slozena,36,10,0.278,0.622,25.73
+kmeans,prozirna,jednostavna,11,11,1.0,0.836,10.18
+kmeans,prozirna,slozena,7,4,0.571,0.626,17.78
+kmeans,obojena,jednostavna,11,10,0.909,0.819,17.55
+kmeans,obojena,slozena,36,14,0.389,0.716,18.32
+chanvese,prozirna,jednostavna,11,8,0.727,0.759,9.51
+chanvese,prozirna,slozena,7,2,0.286,0.622,21.11
+chanvese,obojena,jednostavna,11,9,0.818,0.765,13.6
+chanvese,obojena,slozena,36,7,0.194,0.713,19.58

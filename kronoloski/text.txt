@@ -1,0 +1,74 @@
+Algoritam	TP	FN	FP	Preciznost	Odziv	Prosj. IoU	MAE %	RMSE %	Vrijeme/slika
+RGB	24	37	23	0.511	0.393	0.741	16.7	22.9	0.10s
+CIELAB	25	36	23	0.521	0.410	0.724	15.9	21.6	0.11s
+K-means	29	32	44	0.397	0.475	0.667	18.4	23.1	0.44s
+
+Odziv je glavni problem: svi algoritmi promaše više od pola stvarnih boca (39-48% odziv). Ovo je dominantan izvor "loših rezultata" — nije da je postotak punjenja jako netočan, nego da algoritam boce puno češće uopće ne pronađe.
+Lažni pozitivi su također visoki: K-means ih ima čak više (44) nego stvarnih pogodaka (29) — pronalazi puno stvari koje nisu boce.
+K-means je ~4× sporiji od RGB/Lab (0.44s vs ~0.1s po slici) — vrijedno za poglavlje usporedbe u radu.
+MAE od 16-18 postotnih bodova (samo na uspješno pronađenim bocama) je umjeren problem, ali sekundaran naspram odziva.
+Ovo potvrđuje da je lokalizacija stvarno usko grlo, ne detekcija razine tekućine. Za sustavno popravljanje odziva (umjesto nagađanja "na oko" kao maloprije) trebalo bi proširiti evaluacija/kalibracija.py da testira i parametre lokalizacije (MIN_ASPECT_RATIO, MIN_COVERAGE_RATIO, MIN_EDGE_DENSITY itd.) protiv ovih pravih 61 boca, umjesto da se i dalje pogađa gledajući slike.
+
+=== ITERACIJA 2: kalibracija lokalizacije + analiza uzroka promašaja + treći fallback sloj ===
+
+1) GRID-SEARCH KALIBRACIJA LOKALIZACIJE (evaluacija/kalibracija.py --target localization)
+36 kombinacija (MIN_ASPECT_RATIO x MIN_COVERAGE_RATIO x MIN_EDGE_DENSITY), cilj = prosječni F1 (preciznost+odziv) preko sva tri algoritma na 34 slike/61 boca.
+Najbolja kombinacija: MIN_ASPECT_RATIO=1.15 (nepromijenjen - nije bio usko grlo), MIN_COVERAGE_RATIO=0.22->0.18, MIN_EDGE_DENSITY=0.02->0.03. F1 0.445->0.467 (+5% relativno).
+Primijenjeno u common.py kao novi default. Potvrđeno na punoj evaluaciji: odziv porastao kod sva tri algoritma (RGB 0.393->0.426, Lab 0.410->0.459, K-means 0.475->0.492) bez pada preciznosti.
+Nalaz za rad: F1 ima strop ~0.47 s ova tri parametra - fino podešavanje pragova ima granicu, temeljni pristup (jedan globalni Otsu prag + geometrijski filtri) ima ograničenje koje brojke same ne rješavaju.
+
+2) DODANA KRONOLOŠKA POVIJEST REZULTATA
+evaluacija/pokreni_evaluaciju.py sad piše i evaluacija/rezultati/povijest.csv - raste (append) iz pokretanja u pokretanje, s vremenskom oznakom, za razliku od sazetak.csv/detaljno.csv koji se prepisuju svaki put.
+
+3) ANALIZA UZROKA PROMAŠAJA (FN) - "nula preklapanja" vs "blizu-promašaj"
+Za svaku promašenu bocu provjereno je postoji li IJEDAN detektirani okvir s IoU>0 (blizu-promašaj) ili doslovno nijedan kandidat u blizini (nula preklapanja).
+RGB: 35 FN = 17 nula-preklapanja (49%) + 18 blizu-promašaj (51%, prosj. IoU 0.18).
+Lab: 33 FN = 18 nula-preklapanja (55%) + 15 blizu-promašaj (45%, prosj. IoU 0.19).
+K-means: 31 FN = 10 nula-preklapanja (32%) + 21 blizu-promašaj (68%, prosj. IoU 0.23).
+5 slučajeva promašeno kod SVA TRI algoritma istovremeno (zajednički, ne algoritam-specifičan uzrok) - vizualnom inspekcijom utvrđeno: sve fotografirane na jednoličnoj, svijetloj/toplo-bijeloj studijskoj pozadini s prozirnom/svijetlom bocom -> gotovo nula lokalnog kontrasta ruba/boje -> SVI signali (RGB/Lab gradijent, K-means klasteriranje po boji) strukturno nemaju što uhvatiti.
+
+4) DODAN TREĆI FALLBACK SLOJ: common.local_variance_map
+Lokalna varijanca (tekstura) sivog kanala, Otsu-pragom binarizirana - čak i providna/svijetla boca na jednoličnoj pozadini ima suptilnu unutarnju teksturu (odsjaje, rub tekućine, nabore plastike) koje pozadina nema. Ožičeno kao treći (zadnji) fallback sloj u sva tri modula, nakon primarnog gradijenta i fuzije sa zasićenjem - isti "probaj-pa-padni-natrag" obrazac, aktivira se samo kad prethodni slojevi ne nađu ništa.
+
+5) OTKRIVEN I POPRAVLJEN BUG: common.exclude_skin
+Dijagnostikom trećeg sloja otkriveno: exclude_skin (YCrCb raspon boje kože) pogrešno prepoznavao 98% CIJELE slike kao kožu na toplo-bijeloj studijskoj pozadini (YCrCb raspon sam po sebi prežirok, hvata i blijede/tople pozadine). Ovo je brisalo signal u SVA TRI sloja, ne samo trećem - retroaktivno objašnjava dio ranijih promašaja.
+Popravak: dodan uvjet HSV zasićenja (SKIN_MIN_SATURATION=60) - prava koža ima primjetnu boju, gotovo bijela/siva pozadina nema, bez obzira slaže li joj se YCrCb ton slučajno s rasponom kože. Testirano: pozadina s 1.2M "kožnih" piksela pada na 166; stvarna ruka (IMG_6206) zadržava ~124k piksela (i dalje ispravno isključena).
+
+REZULTAT (nakon popravka bug-a + trećeg sloja), puna evaluacija 34 slike/61 boca:
+Algoritam	TP	FN	FP	Preciznost	Odziv	Prosj. IoU	MAE %	RMSE %
+RGB	25	36	26	0.490	0.410	0.821	16.9	23.2
+CIELAB	28	33	28	0.500	0.459	0.767	16.3	21.5
+K-means	26	35	46	0.361	0.426	0.662	20.4	24.7
+
+Mješovit ali objašnjiv rezultat:
+- Ciljani problem RIJEŠEN: dijagnosticirani slučaj (20260723_175708.webp) sad savršeno pogađa (bbox gotovo identičan ground truth). Slike promašene kod SVA TRI algoritma pale s 5 na 2.
+- RGB/Lab: prosječni IoU znatno porastao (0.746->0.821, 0.722->0.767) - bolja kvaliteta okvira na pogocima.
+- K-means: pogoršan (TP 30->26, FP 45->46, MAE 18.9->20.4). Objašnjenje: bug ga je SLUČAJNO štitio - pretjerano agresivno brisanje je nesvjesno uklanjalo dio K-means viška klastera; bez tog "slučajnog filtra" ti klasteri sad prolaze kao lažni pozitivi. Ovo je ODVOJEN, postojeći problem K-means pristupa (sklonost prekomjernoj segmentaciji), koji je bug prije prikrivao - treba svoj zaseban popravak (nije obuhvaćeno ovom iteracijom).
+
+OTVORENO ZA SLJEDEĆU ITERACIJU: K-means-ov novo-vidljivi problem s lažnim pozitivima (46 FP > 26 TP).
+
+
+#	Paradigma	Algoritam	Kako koristi euklidsku udaljenost
+1	Lokalna (diferencijalna)	Gradijent boje + poopćeni Otsu rez	udaljenost susjednih piksela (rub = velika udaljenost)
+2	Globalna (particijska)	K-means klasteriranje	udaljenost piksela do k centroida (regija = bliski pikseli)
+3	Varijacijska (energetska)	Chan–Vese aktivna kontura	udaljenost piksela do statistike regije (kontura minimizira sumu kvadratnih odstupanja)
+
+Prozirne vs obojene: zapravo složenost dominira, ne prozirnost
+Odziv (2×2), broj boca: prozirna/jed=11, prozirna/komp=7, obojena/jed=11, obojena/komp=36:
+
+prozirna·jednostavna	prozirna·složena	obojena·jednostavna	obojena·složena
+lab	0.73	0.29	0.82	0.36
+kmeans	1.00	0.57	0.91	0.39
+chanvese	0.73	0.29	0.82	0.19
+Ključni zaključak: unutar iste složenosti, prozirna vs obojena je sličan odziv (u složenim scenama prozirne su čak malo BOLJE kod kmeansa: 0.57 vs 0.39). Pad ide s jednostavna→složena (0.8–1.0 → 0.2–0.4), ne s bojom. Dakle "prozirne boce" nisu glavni krivac — nered u pozadini (složenost) jest. (Napomena: klasifikacija prozirnosti je automatski proxy — mogu ju ručno doraditi ako želiš.)
+
+Glavne razlike između 3 paradigme (+ rgb ablacija)
+kmeans — K-means (particijska): vođa ODZIVA. Najbolji odziv u svakoj kategoriji (1.0 jednostavna, 0.60 ukupno). Prostorno+bojno klasteriranje najbolje hvata više-bočne, tamne i složene scene; nalazi boce koje drugi ne mogu (npr. 175641 preko boje etikete). Cijena: nešto niža preciznost, najsporiji (~2.2s), a razina zna lutati na zelenom staklu (teal = "tekućina"). Slabost paradigme: stapa susjedne boce iste boje.
+
+lab — gradijent CIELAB: vođa PRECIZNOSTI/tijesnih okvira. Preciznost 0.70, najbolji IoU na jednostavnima (0.86), brz (0.25s). Treba rub/kromu → promašuje nisko-kromatske i tamne boce u slabom svjetlu (CIELAB naglašava kromu koje prozirna voda nema). Slabost paradigme: bezrubne (prozirne) boce.
+
+chanvese — Chan-Vese (varijacijska): vođa RAZINE + preciznost na jednostavnima (1.00). Najbolji MAE razine (14.5 ukupno, 9.3 na niskom punjenju) — regijska mjera daje glatku, fizikalnu liniju. ALI najlabaviji okviri (IoU 0.74) i najniži odziv u neredu (0.19 obojena·složena) — globalni ACWE teško dijeli foreground/background na zakrčenoj sceni. Slabost paradigme: boce boje pozadine + nered.
+
+rgb (ablacija) — zrcali lab, ali RGB gradijent bolje sidri meniskus na crvenim/prozirnim (usporedba prostora boja).
+
+Poanta 3 ODVOJENE paradigme: otkazuju različito (gradijent→bezrubne, particija→iste-boje-susjedi, varijacija→boja-pozadine+nered), pa union odziv 0.69 > svaki pojedini (0.40–0.60) — komplementarnost je dokaz da razdvojenost ima smisla
